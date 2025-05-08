@@ -7,15 +7,15 @@ const isLoading = ref(true);
 const error = ref(null);
 
 const fetchProducts = async () => {
-  console.log('fetchProducts function CALLED'); // <--- Add/Verify
+  console.log('fetchProducts function CALLED');
   isLoading.value = true;
   error.value = null;
   try {
     // Make sure your Django development server is running on port 8000
     const response = await axios.get('http://127.0.0.1:8000/api/products/');
-    console.log('API Response:', response.data); // <--- Add/Verify
+    console.log('API Response:', response.data);
     products.value = response.data;
-    console.log('products.value SET TO:', products.value); // <--- Add/Verify
+    console.log('products.value SET TO:', products.value);
   } catch (e) {
     console.error('Failed to fetch products:', e);
     if (e.response) {
@@ -34,39 +34,65 @@ const fetchProducts = async () => {
 };
 
 // Fetch products when the component is mounted
-onMounted(fetchProducts);
-console.log('ProductList component MOUNTED'); // <--- Add/Verify
+onMounted(() => {
+  console.log('ProductList component MOUNTED');
+  fetchProducts();
+});
 </script>
 
 <template>
-  <div class="product-list-container">
-    <h1>Our Products</h1>
+  <div class="product-list-container py-4"> <h1 class="mb-4 text-center">Our Products</h1> <div v-if="isLoading" class="loading text-center">
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2">Loading products...</p>
+    </div>
 
-    <div v-if="isLoading" class="loading">Loading products...</div>
-
-    <div v-if="error" class="error-message">
-      <p>Could not load products. Please try again later.</p>
+    <div v-if="error" class="error-message alert alert-danger">
+      <p class="fw-bold">Could not load products.</p>
       <p>Details: {{ error }}</p>
-      <button @click="fetchProducts">Retry</button>
+      <button @click="fetchProducts" class="btn btn-danger mt-2">Retry</button>
     </div>
 
-    <div v-if="!isLoading && !error && products.length === 0" class="no-products">
-      No products found.
-    </div>
+    <div v-if="!isLoading && !error && products.length === 0" class="no-products text-center py-5">
+      <p class="lead">No products found at the moment.</p>
+      </div>
 
-    <div v-if="!isLoading && !error && products.length > 0" class="products-grid">
-      <div v-for="product in products" :key="product.id" class="product-card">
-        <img v-if="product.image" :src="product.image" :alt="product.name" class="product-image" />
-        <img v-else src="https://via.placeholder.com/150?text=No+Image" alt="No image available" class="product-image">
-        <h2>{{ product.name }}</h2>
-        <p class="description">{{ product.description }}</p>
-        <p class="price">Price: €{{ product.price }}</p>
-        <p v-if="product.category">Category: {{ product.category }}</p>
-        <p v-if="product.brand">Brand: {{ product.brand }}</p>
-        <p v-if="product.stock">Stock: {{ product.stock }}</p>
-        <div v-if="product.discount_price && product.discount_price !== product.original_price">
-          <p class="original-price">Original: €{{ product.original_price }}</p>
-          <p class="discount-price">Now: €{{ product.discount_price }} ({{ product.discount_rate }}% off)</p>
+    <div v-if="!isLoading && !error && products.length > 0" class="row">
+      <div v-for="product in products" :key="product.id" class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
+        <div class="card h-100 shadow-sm w-100"> <img 
+            v-if="product.image" 
+            :src="product.image" 
+            :alt="product.name" 
+            class="card-img-top" 
+            style="height: 200px; object-fit: contain; padding: 10px;" />
+          <img 
+            v-else 
+            src="https://via.placeholder.com/300x200?text=No+Image" 
+            alt="No image available" 
+            class="card-img-top"
+            style="height: 200px; object-fit: cover; padding: 10px;" />
+
+          <div class="card-body d-flex flex-column"> <h5 class="card-title">{{ product.name }}</h5>
+            <p class="card-text text-muted small flex-grow-1 description-text">
+              {{ product.description ? (product.description.length > 100 ? product.description.substring(0, 100) + '...' : product.description) : 'No description available.' }}
+            </p>
+            
+            <div class="mt-2"> <p class="card-text h5 mb-0 text-primary fw-bold">€{{ parseFloat(product.price).toFixed(2) }}</p>
+              <div v-if="product.discount_price && parseFloat(product.discount_price) < parseFloat(product.price)">
+                 <small class="text-muted text-decoration-line-through">Original: €{{ parseFloat(product.original_price || product.price).toFixed(2) }}</small>
+                 <p class="card-text h5 text-danger fw-bold">Now: €{{ parseFloat(product.discount_price).toFixed(2) }} 
+                   <span v-if="product.discount_rate" class="badge bg-danger ms-1">{{ product.discount_rate }}% off</span>
+                 </p>
+              </div>
+            </div>
+
+            <p v-if="product.category" class="card-text mt-2 mb-0"><small class="text-muted">Category: {{ product.category }}</small></p>
+            <p v-if="product.brand" class="card-text mb-2"><small class="text-muted">Brand: {{ product.brand }}</small></p>
+
+            <div class="mt-auto pt-2"> <a href="#" class="btn btn-primary w-100 mb-1">View Details</a>
+              </div>
+          </div>
         </div>
       </div>
     </div>
@@ -74,81 +100,19 @@ console.log('ProductList component MOUNTED'); // <--- Add/Verify
 </template>
 
 <style scoped>
-.product-list-container {
-  font-family: Arial, sans-serif;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+/* Minimal scoped styles, as Bootstrap handles most of it */
+
+.card-img-top {
+  border-bottom: 1px solid #eee; /* Adds a subtle line below the image */
 }
 
-.loading,
-.error-message,
-.no-products {
-  text-align: center;
-  padding: 20px;
-  font-size: 1.2em;
+.description-text {
+  min-height: 60px; /* Ensures a minimum height for description area, helps card alignment if descriptions vary a lot */
 }
 
-.error-message {
-  color: red;
-  border: 1px solid red;
-  background-color: #ffebeb;
-  border-radius: 5px;
-}
-
-.error-message button {
-  margin-top: 10px;
-  padding: 8px 15px;
-  cursor: pointer;
-}
-
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.product-card {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 15px;
-  text-align: center;
-  box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
-}
-
-.product-image {
-  max-width: 100%;
-  height: 150px; /* Fixed height for consistency */
-  object-fit: contain; /* Changed from 'cover' to 'contain' to show whole image */
-  margin-bottom: 15px;
-  border-radius: 4px;
-}
-
-.product-card h2 {
-  font-size: 1.3em;
-  margin: 10px 0;
-}
-
-.product-card .description {
-  font-size: 0.9em;
-  color: #555;
-  min-height: 50px; /* Give some space for description */
-}
-
-.product-card .price {
-  font-size: 1.1em;
-  font-weight: bold;
-  color: #333;
-  margin-top: 10px;
-}
-
-.original-price {
-    text-decoration: line-through;
-    color: #999;
-    font-size: 0.9em;
-}
-.discount-price {
-    color: #d9534f; /* A reddish color for discount */
-    font-weight: bold;
-}
+/* If you want to ensure all cards in a row truly have the same height, 
+   the `d-flex align-items-stretch` on the column (`.col-*`) and `h-100` on the card is a good combination.
+   However, `h-100` on the card works when the parent column is also part of a flex row.
+   The `align-items-stretch` on the column is key if the row itself is display:flex (which Bootstrap rows are).
+*/
 </style>
